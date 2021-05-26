@@ -1,4 +1,5 @@
 -- main
+CENTER = 64
 LEFT, RIGHT, UP, DOWN, FIRE1, FIRE2 = 0, 1, 2, 3, 4, 5
 BLACK, DARK_BLUE, DARK_PURPLE, DARK_GREEN, BROWN, DARK_GRAY, LIGHT_GRAY, WHITE, RED, ORANGE, YELLOW, GREEN, BLUE, INDIGO, PINK, PEACH =
     0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
@@ -33,6 +34,8 @@ function _init()
 
     _UPDATE = game_update
     _DRAW = game_draw
+
+    camera(-(CENTER / 2), -(CENTER / 2))
 end
 
 function _update() _UPDATE() end
@@ -44,7 +47,8 @@ function game_update()
     local current_tile = mget(unpack(PLAYER))
 
     if current_tile == EXIT then
-        _UPDATE = function() end
+        camera(0, 0)
+        _UPDATE = noop
         _DRAW = win_draw
         return
     end
@@ -89,12 +93,12 @@ end
 function win_draw()
     local text = "win"
     local text_width, text_height = #text * 4, 4;
-    local center, offset_x, offset_y = 64, text_width, text_height
-    rectfill(center - offset_x, center - offset_y, center + offset_x,
-             center + offset_y, BLACK)
-    rect(center - offset_x, center - offset_y, center + offset_x,
-         center + offset_y, WHITE)
-    print(text, center - text_width / 2, center - text_height / 2, WHITE)
+    local offset_x, offset_y = text_width, text_height
+    rectfill(CENTER - offset_x, CENTER - offset_y, CENTER + offset_x,
+             CENTER + offset_y, BLACK)
+    rect(CENTER - offset_x, CENTER - offset_y, CENTER + offset_x,
+         CENTER + offset_y, WHITE)
+    print(text, CENTER - text_width / 2, CENTER - text_height / 2, WHITE)
 end
 -- >8
 -- util
