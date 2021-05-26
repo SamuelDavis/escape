@@ -1,5 +1,6 @@
 -- main
 CENTER = 64
+CONTROLS = "move with ⬅️, ➡️, ⬆️, ⬇️"
 LEFT, RIGHT, UP, DOWN, FIRE1, FIRE2 = 0, 1, 2, 3, 4, 5
 BLACK, DARK_BLUE, DARK_PURPLE, DARK_GREEN, BROWN, DARK_GRAY, LIGHT_GRAY, WHITE, RED, ORANGE, YELLOW, GREEN, BLUE, INDIGO, PINK, PEACH =
     0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
@@ -66,6 +67,8 @@ function game_update()
 end
 function game_draw()
     cls()
+    print("escape !", 16, -18)
+    print(CONTROLS, -18, CENTER)
     for i, value in ipairs(SEEN) do
         local x, y = unpack(value)
         local sprite = mget(x, y)
