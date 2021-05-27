@@ -1,135 +1,110 @@
 -- main
-CENTER = 64
-CONTROLS = "move with ⬅️, ➡️, ⬆️, ⬇️"
 LEFT, RIGHT, UP, DOWN, FIRE1, FIRE2 = 0, 1, 2, 3, 4, 5
 BLACK, DARK_BLUE, DARK_PURPLE, DARK_GREEN, BROWN, DARK_GRAY, LIGHT_GRAY, WHITE, RED, ORANGE, YELLOW, GREEN, BLUE, INDIGO, PINK, PEACH =
     0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
-
-WEST, EAST, NORTH, SOUTH = 1, 2, 3, 4
-NORTHWEST, SOUTHWEST, NORTHEAST, SOUTHEAST = 17, 18, 19, 20
-EXIT = 16
-DELTA = {[LEFT] = {-1, 0}, [RIGHT] = {1, 0}, [UP] = {0, -1}, [DOWN] = {0, 1}}
-EXITS = {
-    [LEFT] = {WEST, NORTHWEST, SOUTHWEST},
-    [RIGHT] = {EAST, NORTHEAST, SOUTHEAST},
-    [UP] = {NORTH, NORTHWEST, NORTHEAST},
-    [DOWN] = {SOUTH, SOUTHWEST, SOUTHEAST}
-}
-
-_UPDATE = function() end
-_DRAW = function() end
-PLAYER = {-1, -1}
-SEEN = {}
+DIRECTIONS = {LEFT, RIGHT, UP, DOWN}
+TEXT_WIDTH, TEXT_HEIGHT = 4, 6
+CENTER = 64
 
 function _init()
-    mset(0, 1, NORTH)
-    mset(0, 0, SOUTHEAST)
-    mset(1, 0, SOUTHWEST)
-    mset(1, 1, NORTHEAST)
-    mset(2, 1, SOUTHWEST)
-    mset(2, 2, NORTHWEST)
-    mset(1, 2, EXIT)
-
-    PLAYER = {0, 1}
-    see(unpack(PLAYER))
-
-    _UPDATE = game_update
-    _DRAW = game_draw
-
-    camera(-(CENTER / 2), -(CENTER / 2))
+    _STATE = {
+        rooms = {
+            {[DOWN] = 3, [RIGHT] = 2}, {[DOWN] = 4, [LEFT] = 1},
+            {[UP] = 1, [RIGHT] = 4}, true
+        },
+        history = {1},
+        choice = nil
+    }
+    _DRW = DRAW_GAME
+    _UPD = UPDATE_GAME
 end
 
-function _update() _UPDATE() end
+function _update() _UPD(_STATE) end
 
-function _draw() _DRAW() end
--- >8
--- game
-function game_update()
-    local current_tile = mget(unpack(PLAYER))
+function _draw() _DRW(_STATE) end
+-- >
+-- draw
+function DRAW_GAME(state)
+    local room = state.history[#state.history]
+    local exits = state.rooms[room]
+    if exits == true then return end
 
-    if current_tile == EXIT then
-        camera(0, 0)
-        _UPDATE = noop
-        _DRAW = win_draw
-        return
+    local text = "room" .. room .. ", exits are: "
+    cls(INDIGO)
+    print(text, 1, 1, WHITE)
+    local i = 0
+    for direction in pairs(exits) do
+        local color = direction == state.choice and YELLOW or WHITE
+        direction = DIRECTION_TO_STRING(direction) .. " "
+        print(direction, #text * TEXT_WIDTH + #direction * TEXT_WIDTH * i + 1,
+              1, color)
+        i = i + 1
     end
 
-    local direction = get_direction(EXITS)
-    if direction == nil then return end
-
-    if not is_exit(direction, current_tile) then return end
-
-    local target_position = get_target(PLAYER, DELTA[direction])
-    if mget(unpack(target_position)) == nil then return end
-
-    PLAYER[1], PLAYER[2] = unpack(target_position)
-    see(unpack(PLAYER))
+    for k, v in pairs(state.history) do
+        print(v, 1, 128 - TEXT_HEIGHT * k, WHITE)
+    end
 end
-function game_draw()
-    cls()
-    print("escape !", 16, -18)
-    print(CONTROLS, -18, CENTER)
-    for i, value in ipairs(SEEN) do
-        local x, y = unpack(value)
-        local sprite = mget(x, y)
-        if sprite == EXIT then
-            pal()
-        elseif i == #SEEN then
-            pal(RED, YELLOW)
-            pal(GREEN, DARK_GRAY)
-            pal(BLUE, INDIGO)
-        elseif i == #SEEN - 1 then
-            pal(RED, LIGHT_GRAY)
-            pal(GREEN, DARK_GRAY)
-            pal(BLUE, DARK_BLUE)
-        else
-            pal(RED, LIGHT_GRAY)
-            pal(GREEN, DARK_GRAY)
-            pal(BLUE, BLACK)
+function DRAW_WIN()
+    local text = "you escaped"
+    print(text, CENTER - #text / 2 - 1, CENTER, YELLOW)
+end
+-- >
+-- update
+function UPDATE_GAME(state)
+    local room = state.history[#state.history]
+    local exits = state.rooms[room]
+    for _, button in pairs(DIRECTIONS) do
+        if exits == true then
+            _UPD = NOOP
+            _DRW = DRAW_WIN
+        elseif btnp(button) and exits[button] ~= nil then
+            if button == state.choice then
+                state.choice = nil
+                state.history[#state.history + 1] = exits[button]
+            else
+                state.choice = button
+            end
+            return
         end
-        spr(sprite, x * 8, y * 8)
     end
-    x, y = unpack(PLAYER)
-    spr(mget(x, y), x * 8, y * 8)
-    pal()
 end
-function win_draw()
-    local text = "win"
-    local text_width, text_height = #text * 4, 4;
-    local offset_x, offset_y = text_width, text_height
-    rectfill(CENTER - offset_x, CENTER - offset_y, CENTER + offset_x,
-             CENTER + offset_y, BLACK)
-    rect(CENTER - offset_x, CENTER - offset_y, CENTER + offset_x,
-         CENTER + offset_y, WHITE)
-    print(text, CENTER - text_width / 2, CENTER - text_height / 2, WHITE)
-end
--- >8
+-- >
 -- util
-function noop() end
-function see(x, y) SEEN[#SEEN + 1] = {x, y} end
-function tbl_eql(a, b)
-    if type(a) ~= "table" or type(b) ~= "table" then return nil end
-
-    for key, value in pairs(a) do if value ~= b[key] then return false end end
-
-    return true
-end
-
-function get_direction(directions)
-    for direction in pairs(directions) do
-        if btnp(direction) then return direction end
+function DIRECTION_TO_STRING(direction)
+    if direction == LEFT then
+        return "L"
+    elseif direction == RIGHT then
+        return "R"
+    elseif direction == UP then
+        return "U"
+    elseif direction == DOWN then
+        return "D"
     end
     return nil
 end
 
-function is_exit(direction, tile)
-    for _, value in pairs(EXITS[direction] or {}) do
-        if tile == value then return true end
+local function navigate(rooms, history)
+    local room = history[#history]
+    local doors = rooms[room]
+
+    if doors == true then return print("Congratulations, you reached room4!") end
+
+    print(room .. ", exits are:")
+    for key in pairs(doors) do print(".." .. key) end
+
+    io.write("Your move: ")
+    io.flush()
+    local move = io.read()
+    local next = doors[move]
+
+    if next == nil then
+        print("invalid move: " .. move)
+    else
+        history[#history + 1] = next
     end
 
-    return false
+    return navigate(rooms, history)
 end
 
-function get_target(start, delta)
-    return {start[1] + delta[1], start[2] + delta[2]}
-end
+function NOOP() end
